@@ -51,6 +51,18 @@ export function canDeleteRevenue(role) {
   return role === ROLES.ADMIN;
 }
 
+export function canManagePayroll(role) {
+  return role === ROLES.ADMIN;
+}
+
+export function canViewPayroll(role) {
+  return [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER].includes(role);
+}
+
+export function canManagePayrollAdjustments(role) {
+  return role === ROLES.ADMIN;
+}
+
 export function getMenuItems(role) {
   const allItems = [
     { path: '/dashboard', label: 'Bàn làm việc', desc: 'Tổng quan hệ thống', icon: 'LayoutDashboard', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
@@ -60,6 +72,7 @@ export function getMenuItems(role) {
     { path: '/shifts', label: 'Ca làm', desc: 'Quản lý ca làm việc', icon: 'Clock', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/attendance', label: 'Bảng công', desc: 'Chấm công chi tiết', icon: 'CalendarClock', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/revenues', label: 'Doanh thu', desc: 'Theo dõi doanh thu chi nhánh', icon: 'Wallet', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
+    { path: '/payrolls', label: 'Bảng lương', desc: 'Tính lương & thanh toán', icon: 'ReceiptText', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/users', label: 'Tài khoản', desc: 'Quản lý người dùng', icon: 'Shield', roles: [ROLES.ADMIN] },
   ];
 
