@@ -28,6 +28,18 @@ export function getStatusBadgeVariant(status) {
     late: 'warning',
     on_time: 'success',
     absent: 'danger',
+    draft: 'default',
+    submitted: 'info',
+    confirmed: 'success',
   };
   return map[status] || 'default';
+}
+
+export function getRevenueStatusLabel(status) {
+  const map = {
+    draft: 'Nháp',
+    submitted: 'Đã gửi',
+    confirmed: 'Đã xác nhận',
+  };
+  return map[status] || status || '—';
 }
