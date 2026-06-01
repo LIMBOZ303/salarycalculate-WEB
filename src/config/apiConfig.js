@@ -12,6 +12,8 @@ export const ENDPOINTS = {
   shifts: '/api/shifts',
   attendance: '/api/attendance',
   revenues: '/api/revenues',
+  payrolls: '/api/payrolls',
+  payrollAdjustments: '/api/payroll-adjustments',
   admin: {
     users: '/api/admin/users',
     pendingEmployees: '/api/admin/employees/pending',
