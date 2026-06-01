@@ -6,6 +6,8 @@ const ARRAY_KEYS = [
   'shifts',
   'attendances',
   'attendance',
+  'revenues',
+  'revenue',
   'history',
   'items',
   'records',
@@ -20,6 +22,8 @@ const OBJECT_KEYS = [
   'branch',
   'shift',
   'attendance',
+  'revenue',
+  'summary',
   'data',
 ];
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Users, UserCheck, Store, Clock, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Users, UserCheck, Store, Clock, CalendarClock, AlertTriangle, Wallet, ShoppingBag } from 'lucide-react';
 import { StatCard } from '../components/Card';
 import Loading from '../components/Loading';
 import ErrorState from '../components/ErrorState';
@@ -7,10 +7,12 @@ import employeeService from '../services/employeeService';
 import branchService from '../services/branchService';
 import shiftService from '../services/shiftService';
 import attendanceService from '../services/attendanceService';
+import revenueService from '../services/revenueService';
 import adminService from '../services/adminService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterByBranch, ROLES, getUserBranchId } from '../utils/rolePermissions';
 import { getCurrentMonthYear, getTodayISO } from '../utils/formatDate';
+import { formatCurrency, formatNumber } from '../utils/formatCurrency';
 import { getApiMessage } from '../utils/parseApiData';
 
 export default function Dashboard() {
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [shifts, setShifts] = useState([]);
   const [attendances, setAttendances] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [revenueSummary, setRevenueSummary] = useState({ totalRevenue: 0, totalOrders: 0 });
 
   const { month, year } = getCurrentMonthYear();
   const today = getTodayISO();
@@ -63,6 +66,21 @@ export default function Dashboard() {
 
       if (user?.role === ROLES.ADMIN && results[4]) {
         setPendingCount(results[4].length);
+      }
+
+      try {
+        const summaryParams = { month, year };
+        if (user?.role === ROLES.BRANCH_MANAGER) {
+          const branchId = getUserBranchId(user);
+          if (branchId) summaryParams.branchId = branchId;
+        }
+        const summary = await revenueService.getMonthlySummary(summaryParams);
+        setRevenueSummary({
+          totalRevenue: summary?.totalRevenue ?? 0,
+          totalOrders: summary?.totalOrders ?? 0,
+        });
+      } catch {
+        setRevenueSummary({ totalRevenue: 0, totalOrders: 0 });
       }
     } catch (err) {
       setError(getApiMessage(err));
@@ -132,6 +150,20 @@ export default function Dashboard() {
           icon={AlertTriangle}
           color="rose"
           subtitle={lateTodayCount > 0 ? 'Cần theo dõi' : 'Không có đi trễ'}
+        />
+        <StatCard
+          label="Doanh thu tháng này"
+          value={formatCurrency(revenueSummary.totalRevenue)}
+          icon={Wallet}
+          color="brand"
+          subtitle={`Tháng ${month}/${year}`}
+        />
+        <StatCard
+          label="Tổng đơn tháng này"
+          value={formatNumber(revenueSummary.totalOrders)}
+          icon={ShoppingBag}
+          color="blue"
+          subtitle="Đơn hàng trong tháng"
         />
       </div>
     </div>

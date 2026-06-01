@@ -6,6 +6,7 @@ import {
   Clock,
   CalendarClock,
   Shield,
+  Wallet,
   X,
   CreditCard,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ const iconMap = {
   Clock,
   CalendarClock,
   Shield,
+  Wallet,
 };
 
 export default function Sidebar({ isOpen, setIsOpen }) {

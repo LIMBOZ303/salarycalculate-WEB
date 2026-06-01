@@ -39,6 +39,18 @@ export function canManageUsers(role) {
   return role === ROLES.ADMIN;
 }
 
+export function canManageRevenue(role) {
+  return role === ROLES.ADMIN || role === ROLES.BRANCH_MANAGER;
+}
+
+export function canConfirmRevenue(role) {
+  return role === ROLES.ADMIN;
+}
+
+export function canDeleteRevenue(role) {
+  return role === ROLES.ADMIN;
+}
+
 export function getMenuItems(role) {
   const allItems = [
     { path: '/dashboard', label: 'Bàn làm việc', desc: 'Tổng quan hệ thống', icon: 'LayoutDashboard', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
@@ -47,6 +59,7 @@ export function getMenuItems(role) {
     { path: '/branches', label: 'Chi nhánh', desc: 'Quản lý chi nhánh', icon: 'Store', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/shifts', label: 'Ca làm', desc: 'Quản lý ca làm việc', icon: 'Clock', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/attendance', label: 'Bảng công', desc: 'Chấm công chi tiết', icon: 'CalendarClock', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
+    { path: '/revenues', label: 'Doanh thu', desc: 'Theo dõi doanh thu chi nhánh', icon: 'Wallet', roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER] },
     { path: '/users', label: 'Tài khoản', desc: 'Quản lý người dùng', icon: 'Shield', roles: [ROLES.ADMIN] },
   ];
 

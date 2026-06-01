@@ -10,6 +10,7 @@ import EmployeeDetail from '../pages/EmployeeDetail';
 import Branches from '../pages/Branches';
 import Shifts from '../pages/Shifts';
 import Attendance from '../pages/Attendance';
+import Revenues from '../pages/Revenues';
 import Users from '../pages/Users';
 import Forbidden from '../pages/Forbidden';
 import NotFound from '../pages/NotFound';
@@ -84,6 +85,14 @@ export default function AppRoutes() {
           element={
             <RoleRoute allowedRoles={dashboardRoles}>
               <Attendance />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="revenues"
+          element={
+            <RoleRoute allowedRoles={dashboardRoles}>
+              <Revenues />
             </RoleRoute>
           }
         />

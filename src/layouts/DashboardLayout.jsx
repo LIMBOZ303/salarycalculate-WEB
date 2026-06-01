@@ -10,6 +10,7 @@ const pageTitles = {
   '/branches': { title: 'Quản lý chi nhánh', subtitle: 'Thông tin chi nhánh & GPS' },
   '/shifts': { title: 'Quản lý ca làm', subtitle: 'Cấu hình ca làm việc' },
   '/attendance': { title: 'Bảng công', subtitle: 'Theo dõi chấm công chi tiết' },
+  '/revenues': { title: 'Doanh thu chi nhánh', subtitle: 'Quản lý và theo dõi doanh thu theo ngày, tháng, quý' },
   '/users': { title: 'Quản lý tài khoản', subtitle: 'Phân quyền & trạng thái người dùng' },
 };
 
