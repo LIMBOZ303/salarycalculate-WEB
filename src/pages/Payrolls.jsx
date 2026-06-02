@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Calculator,
   Eye,
@@ -17,10 +17,10 @@ import {
   CircleDollarSign,
   MessageSquare,
   SlidersHorizontal,
-  Clock,
-  CalendarDays,
   RotateCcw,
   AlertCircle,
+  Printer,
+  Download,
 } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import Table from '../components/Table';
@@ -37,6 +37,18 @@ import Badge, {
   getPayrollStatusBadgeVariant,
   getAdjustmentTypeLabel,
 } from '../components/Badge';
+import PayslipPreview from '../components/PayslipPreview';
+import {
+  getEmployeeName,
+  getEmployeeCode,
+  getPosition,
+  getPayable,
+} from '../utils/payrollDisplay';
+import {
+  printPayslipElement,
+  downloadPayslipHtml,
+  buildPayslipFilename,
+} from '../utils/payslipExport';
 import payrollService from '../services/payrollService';
 import payrollAdjustmentService from '../services/payrollAdjustmentService';
 import branchService from '../services/branchService';
@@ -50,7 +62,7 @@ import {
   getUserBranchId,
   ROLES,
 } from '../utils/rolePermissions';
-import { formatDate, getCurrentMonthYear } from '../utils/formatDate';
+import { getCurrentMonthYear } from '../utils/formatDate';
 import { formatCurrency, formatNumber } from '../utils/formatCurrency';
 import { getApiMessage } from '../utils/parseApiData';
 import { getEntityId, getBranchId, getEmployeeProfileId, hasValidId, devLog } from '../utils/getEntityId';
@@ -100,6 +112,10 @@ const ADJUSTMENT_TYPES = [
   { value: 'bonus', label: 'Thưởng' },
 ];
 
+function getPayrollBonus(row) {
+  return row?.totalBonus ?? row?.bonus ?? 0;
+}
+
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Nháp' },
   { value: 'confirmed', label: 'Đã chốt' },
@@ -126,8 +142,9 @@ function buildRecalculatePayload(filters) {
     year: Number(filters.year),
     recalculate: true,
   };
-  if (filters.employeeId) {
-    payload.employeeId = filters.employeeId;
+  const employeeId = getPayrollEmployeeId(filters);
+  if (employeeId) {
+    payload.employeeId = employeeId;
   } else if (filters.branchId) {
     payload.branchId = filters.branchId;
   }
@@ -138,6 +155,20 @@ function resolveAdjustmentEmployeeId(row) {
   const emp = row?.employee || row?.employeeId;
   if (typeof emp === 'string' && emp.trim()) return emp;
   return getEmployeeProfileId(emp);
+}
+
+function resolveEmployeeOptionId(emp) {
+  if (!emp) return '';
+  if (typeof emp === 'string') return emp;
+
+  return (
+    getEmployeeProfileId(emp.employeeProfile) ||
+    getEmployeeProfileId(emp.employee) ||
+    (typeof emp.employeeId === 'object' ? getEmployeeProfileId(emp.employeeId) : '') ||
+    emp.employeeProfileId ||
+    emp.profileId ||
+    getEmployeeProfileId(emp)
+  );
 }
 
 function getPayrollEmployeeId(row) {
@@ -159,57 +190,6 @@ function buildAdjustmentPayload(form) {
   };
   if (form.note?.trim()) payload.note = form.note.trim();
   return payload;
-}
-
-function getEmployeeName(row) {
-  const emp = row.employee || row.employeeId;
-  if (typeof emp === 'object' && emp) {
-    return emp.fullName || emp.name || '—';
-  }
-  return row.employeeName || row.fullName || '—';
-}
-
-function getEmployeeCode(row) {
-  const emp = row.employee || row.employeeId;
-  if (typeof emp === 'object' && emp) {
-    return emp.employeeCode || emp.code || '—';
-  }
-  return row.employeeCode || row.code || '—';
-}
-
-function getPosition(row) {
-  const emp = row.employee || row.employeeId;
-  if (typeof emp === 'object' && emp) {
-    return emp.position || emp.jobTitle || '—';
-  }
-  return row.position || row.jobTitle || '—';
-}
-
-function getPayable(row) {
-  return row.netPay ?? row.payable ?? row.totalPayable ?? row.actualPay ?? 0;
-}
-
-function PayslipRow({ label, value, highlight = false, negative = false }) {
-  return (
-    <div className={`flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0 ${highlight ? 'bg-brand-50/50 -mx-4 px-4 rounded-lg border-0 mt-1' : ''}`}>
-      <span className={`text-sm ${highlight ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>{label}</span>
-      <span className={`text-sm font-medium tabular-nums ${highlight ? 'text-lg font-bold text-brand-700' : negative ? 'text-rose-600' : 'text-slate-800'}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PayslipSection({ title, icon: Icon, children }) {
-  return (
-    <div className="rounded-xl border border-slate-100 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-        {Icon && <Icon className="w-4 h-4 text-brand-600" />}
-        <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">{title}</h4>
-      </div>
-      <div className="px-4 py-1">{children}</div>
-    </div>
-  );
 }
 
 export default function Payrolls() {
@@ -242,6 +222,7 @@ export default function Payrolls() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailAdjustments, setDetailAdjustments] = useState([]);
+  const payslipRef = useRef(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteForm, setNoteForm] = useState({ id: '', note: '' });
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -310,7 +291,7 @@ export default function Payrolls() {
 
   const employeeSelectOptions = (list, { includeHourlyRate = false } = {}) =>
     list.map((e) => {
-      const id = getEmployeeProfileId(e);
+      const id = resolveEmployeeOptionId(e);
       const name = e.fullName || e.name || getEmployeeCode(e);
       const branch = getEmployeeBranchName(e);
       const label = includeHourlyRate
@@ -417,6 +398,46 @@ export default function Payrolls() {
     }
   };
 
+  const fetchPayrollDetail = async (id) => {
+    const data = await payrollService.getPayrollById(id);
+    const empId = getPayrollEmployeeId(data);
+    const detailParams = {
+      month: data.month,
+      year: data.year,
+    };
+    if (empId) detailParams.employeeId = empId;
+
+    let matched = await payrollAdjustmentService.getAdjustments(detailParams);
+    if (user?.role === ROLES.BRANCH_MANAGER) {
+      matched = filterByBranch(matched, user, 'employee');
+    }
+
+    setDetailData(data);
+    setDetailAdjustments(matched.filter(
+      (adj) =>
+        String(resolveAdjustmentEmployeeId(adj)) === String(empId) &&
+        Number(adj.month) === Number(data.month) &&
+        Number(adj.year) === Number(data.year),
+    ));
+    devLog('Selected payroll after refresh', data);
+    return data;
+  };
+
+  const refreshSelectedPayroll = async () => {
+    if (!detailOpen || !detailData) return null;
+    const id = getEntityId(detailData);
+    if (!hasValidId(id)) return null;
+
+    setDetailLoading(true);
+    setDetailData(null);
+    setDetailAdjustments([]);
+    try {
+      return await fetchPayrollDetail(id);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const refreshPayrollData = async () => {
     await Promise.all([fetchPayrolls(), fetchSummary()]);
   };
@@ -426,14 +447,16 @@ export default function Payrolls() {
     setRecalculating(true);
     try {
       const payload = overridePayload || pendingRecalculatePayload || buildRecalculatePayload(filters);
-      devLog('Recalculate payroll payload:', payload);
-      await payrollService.calculatePayroll(payload);
+      devLog('Recalculate payload', payload);
+      const response = await payrollService.calculatePayroll(payload);
+      devLog('Recalculate response', response);
       showToast('Đã tính lại bảng lương', 'success');
       setShowPendingRecalculateBanner(false);
       setRecalculatePromptOpen(false);
       setPendingRecalculatePayload(null);
       await refreshPayrollData();
       await fetchAdjustments();
+      await refreshSelectedPayroll();
     } catch (err) {
       devLog('Recalculate payroll error:', err?.response?.data || err);
       showToast(getApiMessage(err), 'error');
@@ -489,10 +512,14 @@ export default function Payrolls() {
     try {
       const payload = buildCalculatePayload(calculateForm);
       devLog('Calculate payroll payload:', payload);
-      await payrollService.calculatePayroll(payload);
+      if (payload.recalculate) devLog('Recalculate payload', payload);
+      const response = await payrollService.calculatePayroll(payload);
+      if (payload.recalculate) devLog('Recalculate response', response);
       showToast('Tính lương thành công', 'success');
       setCalculateOpen(false);
       await refreshPayrollData();
+      await fetchAdjustments();
+      await refreshSelectedPayroll();
     } catch (err) {
       showToast(getApiMessage(err), 'error');
     } finally {
@@ -509,9 +536,9 @@ export default function Payrolls() {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailData(null);
+    setDetailAdjustments([]);
     try {
-      const data = await payrollService.getPayrollById(id);
-      setDetailData(data);
+      await fetchPayrollDetail(id);
     } catch (err) {
       showToast(getApiMessage(err), 'error');
       setDetailOpen(false);
@@ -645,12 +672,12 @@ export default function Payrolls() {
     try {
       const payload = buildAdjustmentPayload(adjForm);
       const selectedEmployee = employees.find(
-        (e) => String(getEmployeeProfileId(e)) === String(adjForm.employeeId),
+        (e) => String(resolveEmployeeOptionId(e)) === String(adjForm.employeeId),
       );
-      devLog('Create adjustment payload:', payload);
+      devLog('Adjustment payload', payload);
       devLog('Selected employee:', selectedEmployee);
 
-      const recalcPayload = buildRecalculatePayload(filters);
+      const recalcPayload = buildRecalculatePayload(payload);
 
       if (editingAdj) {
         const id = getEntityId(editingAdj);
@@ -745,7 +772,7 @@ export default function Payrolls() {
     {
       key: 'bonus',
       title: 'Thưởng',
-      render: (row) => <span className="tabular-nums text-emerald-600">{formatCurrency(row.bonus ?? row.totalBonus ?? 0)}</span>,
+      render: (row) => <span className="tabular-nums text-emerald-600">{formatCurrency(getPayrollBonus(row))}</span>,
     },
     {
       key: 'payable',
@@ -876,6 +903,29 @@ export default function Payrolls() {
   ];
 
   const d = detailData;
+
+  const handlePayslipPrint = () => {
+    if (!payslipRef.current) {
+      showToast('Chưa sẵn sàng để in phiếu lương', 'error');
+      return;
+    }
+    const ok = printPayslipElement(payslipRef.current);
+    if (!ok) showToast('Không thể mở hộp thoại in', 'error');
+  };
+
+  const handlePayslipDownload = () => {
+    if (!payslipRef.current || !d) {
+      showToast('Chưa sẵn sàng để tải phiếu lương', 'error');
+      return;
+    }
+    const filename = buildPayslipFilename({
+      ...d,
+      employeeCode: getEmployeeCode(d),
+    });
+    const title = `Phiếu lương - ${getEmployeeName(d)} - ${d.month}/${d.year}`;
+    downloadPayslipHtml(filename, payslipRef.current.innerHTML, title);
+    showToast('Đã tải phiếu lương (mở file HTML và in thành PDF nếu cần)', 'success');
+  };
 
   return (
     <div className="space-y-5">
@@ -1345,114 +1395,37 @@ export default function Payrolls() {
         <Modal
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
-          title="Chi tiết bảng lương"
+          title="Phiếu lương"
           size="lg"
           footer={
-            <Button variant="secondary" onClick={() => setDetailOpen(false)}>Đóng</Button>
+            <>
+              <Button variant="secondary" onClick={() => setDetailOpen(false)}>
+                Đóng
+              </Button>
+              {d && !detailLoading && (
+                <>
+                  <Button variant="secondary" onClick={handlePayslipDownload}>
+                    <Download className="w-4 h-4" />
+                    Tải phiếu lương
+                  </Button>
+                  <Button onClick={handlePayslipPrint}>
+                    <Printer className="w-4 h-4" />
+                    In phiếu lương
+                  </Button>
+                </>
+              )}
+            </>
           }
         >
           {detailLoading ? (
             <Loading />
           ) : d ? (
-            <div className="space-y-4">
-              <div className="rounded-xl bg-gradient-to-br from-brand-600 to-brand-700 text-white p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-brand-100 text-xs font-medium uppercase tracking-wider">Phiếu lương</p>
-                    <h3 className="text-xl font-bold mt-1">{getEmployeeName(d)}</h3>
-                    <p className="text-brand-100 text-sm mt-0.5">{getEmployeeCode(d)} · {getBranchName(d)}</p>
-                  </div>
-                  <Badge variant={getPayrollStatusBadgeVariant(d.status)} className="!bg-white/20 !text-white">
-                    {getPayrollStatusLabel(d.status)}
-                  </Badge>
-                </div>
-                <div className="mt-4 pt-4 border-t border-white/20 flex items-end justify-between">
-                  <div>
-                    <p className="text-brand-100 text-xs">Thực trả</p>
-                    <p className="text-2xl font-bold tabular-nums">{formatCurrency(getPayable(d))}</p>
-                  </div>
-                  <p className="text-brand-100 text-sm">Kỳ {d.month}/{d.year}</p>
-                </div>
-              </div>
-
-              <PayslipSection title="Thông tin nhân viên" icon={Users}>
-                <PayslipRow label="Họ tên" value={getEmployeeName(d)} />
-                <PayslipRow label="Mã nhân viên" value={getEmployeeCode(d)} />
-                <PayslipRow label="Chi nhánh" value={getBranchName(d)} />
-                <PayslipRow label="Chức vụ" value={getPosition(d)} />
-                <PayslipRow label="Lương/giờ" value={formatCurrency(d.hourlyRate ?? d.salaryPerHour ?? 0)} />
-                <PayslipRow label="Tháng/năm" value={`${d.month}/${d.year}`} />
-              </PayslipSection>
-
-              <PayslipSection title="Công" icon={Clock}>
-                <PayslipRow label="Tổng giờ" value={formatNumber(d.totalHours ?? d.workHours ?? 0)} />
-                <PayslipRow label="Ngày làm" value={formatNumber(d.workDays ?? d.totalWorkDays ?? 0)} />
-                <PayslipRow label="Số ngày hoàn tất" value={formatNumber(d.completedDays ?? d.completedWorkDays ?? 0)} />
-                <PayslipRow label="Số lần đi trễ" value={formatNumber(d.lateCount ?? d.lateTimes ?? 0)} />
-                <PayslipRow label="Tổng phút đi trễ" value={formatNumber(d.totalLateMinutes ?? d.lateMinutes ?? 0)} />
-                <PayslipRow label="Thiếu chấm ra" value={formatNumber(d.missingCheckOut ?? d.missingCheckOutCount ?? 0)} />
-              </PayslipSection>
-
-              {detailAdjustments.length > 0 && (
-                <PayslipSection title="Điều chỉnh lương" icon={SlidersHorizontal}>
-                  {detailAdjustments.map((adj) => (
-                    <div
-                      key={getEntityId(adj) || `${adj.type}-${adj.amount}-${adj.reason}`}
-                      className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                    >
-                      <div className="min-w-0 pr-3">
-                        <Badge
-                          variant={
-                            adj.type === 'bonus'
-                              ? 'success'
-                              : adj.type === 'penalty'
-                                ? 'danger'
-                                : 'warning'
-                          }
-                        >
-                          {getAdjustmentTypeLabel(adj.type)}
-                        </Badge>
-                        <p className="text-xs text-slate-500 mt-1 truncate" title={adj.reason}>
-                          {adj.reason || '—'}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-sm font-semibold tabular-nums shrink-0 ${
-                          adj.type === 'bonus' ? 'text-emerald-600' : 'text-rose-600'
-                        }`}
-                      >
-                        {formatCurrency(adj.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </PayslipSection>
-              )}
-
-              <PayslipSection title="Lương" icon={Wallet}>
-                <PayslipRow label="Lương cơ bản" value={formatCurrency(d.baseSalary ?? 0)} />
-                <PayslipRow label="Giữ lại tháng này" value={formatCurrency(d.heldThisMonth ?? d.holdThisMonth ?? 0)} />
-                <PayslipRow label="Giữ từ tháng trước" value={formatCurrency(d.heldFromPrevious ?? d.holdFromPrevious ?? 0)} />
-                <PayslipRow label="Phạt" value={formatCurrency(d.penalty ?? 0)} negative />
-                <PayslipRow label="Khấu trừ cố định" value={formatCurrency(d.fixedDeduction ?? 0)} negative />
-                <PayslipRow label="Khấu trừ khác" value={formatCurrency(d.otherDeduction ?? 0)} negative />
-                <PayslipRow label="Thưởng" value={formatCurrency(d.bonus ?? d.totalBonus ?? 0)} />
-                <PayslipRow label="Tổng khấu trừ" value={formatCurrency(d.totalDeductions ?? d.deductions ?? 0)} negative />
-                <PayslipRow label="Thực trả" value={formatCurrency(getPayable(d))} highlight />
-              </PayslipSection>
-
-              <PayslipSection title="Trạng thái" icon={CalendarDays}>
-                <PayslipRow label="Trạng thái" value={getPayrollStatusLabel(d.status)} />
-                <PayslipRow label="Ngày trả dự kiến" value={formatDate(d.expectedPayDate ?? d.scheduledPayDate)} />
-                <PayslipRow label="Ngày đã trả" value={formatDate(d.paidDate ?? d.paidAt)} />
-              </PayslipSection>
-
-              {d.note && (
-                <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Ghi chú</p>
-                  <p className="text-sm text-slate-700">{d.note}</p>
-                </div>
-              )}
-            </div>
+            <PayslipPreview
+              ref={payslipRef}
+              payroll={d}
+              branchName={getBranchName(d)}
+              adjustments={detailAdjustments}
+            />
           ) : (
             <EmptyState title="Không tìm thấy dữ liệu" />
           )}

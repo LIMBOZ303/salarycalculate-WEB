@@ -9,16 +9,32 @@ function assertPayrollId(payrollId, action = 'thao tác') {
   }
 }
 
+function normalizePayroll(payroll) {
+  if (!payroll || typeof payroll !== 'object') return payroll;
+
+  return {
+    ...payroll,
+    bonus: payroll.totalBonus ?? payroll.bonus ?? 0,
+    netPay:
+      payroll.payableAmount ??
+      payroll.netPay ??
+      payroll.payable ??
+      payroll.totalPayable ??
+      payroll.actualPay ??
+      0,
+  };
+}
+
 export const payrollService = {
   getPayrolls: async (params) => {
     const response = await axiosClient.get(ENDPOINTS.payrolls, { params });
-    return extractArray(response.data, ['payrolls', 'data']);
+    return extractArray(response.data, ['payrolls', 'data']).map(normalizePayroll);
   },
 
   getPayrollById: async (id) => {
     assertPayrollId(id, 'xem chi tiết');
     const response = await axiosClient.get(`${ENDPOINTS.payrolls}/${id}`);
-    return extractObject(response.data, ['payroll', 'data']) || response.data?.data || response.data;
+    return normalizePayroll(extractObject(response.data, ['payroll', 'data']) || response.data?.data || response.data);
   },
 
   calculatePayroll: async (payload) => {
