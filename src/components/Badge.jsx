@@ -31,8 +31,37 @@ export function getStatusBadgeVariant(status) {
     draft: 'default',
     submitted: 'info',
     confirmed: 'success',
+    paid: 'success',
   };
   return map[status] || 'default';
+}
+
+export function getPayrollStatusLabel(status) {
+  const map = {
+    draft: 'Nháp',
+    confirmed: 'Đã chốt',
+    paid: 'Đã thanh toán',
+  };
+  return map[status] || status || '—';
+}
+
+export function getPayrollStatusBadgeVariant(status) {
+  const map = {
+    draft: 'default',
+    confirmed: 'info',
+    paid: 'success',
+  };
+  return map[status] || 'default';
+}
+
+export function getAdjustmentTypeLabel(type) {
+  const map = {
+    penalty: 'Phạt',
+    fixed_deduction: 'Khoản trừ cố định',
+    other_deduction: 'Khấu trừ khác',
+    bonus: 'Thưởng',
+  };
+  return map[type] || type || '—';
 }
 
 export function getRevenueStatusLabel(status) {

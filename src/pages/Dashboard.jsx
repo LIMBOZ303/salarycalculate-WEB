@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Users, UserCheck, Store, Clock, CalendarClock, AlertTriangle, Wallet, ShoppingBag } from 'lucide-react';
+import { Users, UserCheck, Store, Clock, CalendarClock, AlertTriangle, Wallet, ShoppingBag, CircleDollarSign, FileCheck } from 'lucide-react';
 import { StatCard } from '../components/Card';
 import Loading from '../components/Loading';
 import ErrorState from '../components/ErrorState';
@@ -8,6 +8,7 @@ import branchService from '../services/branchService';
 import shiftService from '../services/shiftService';
 import attendanceService from '../services/attendanceService';
 import revenueService from '../services/revenueService';
+import payrollService from '../services/payrollService';
 import adminService from '../services/adminService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterByBranch, ROLES, getUserBranchId } from '../utils/rolePermissions';
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [attendances, setAttendances] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [revenueSummary, setRevenueSummary] = useState({ totalRevenue: 0, totalOrders: 0 });
+  const [payrollSummary, setPayrollSummary] = useState({ totalPayable: 0, confirmedCount: 0 });
 
   const { month, year } = getCurrentMonthYear();
   const today = getTodayISO();
@@ -81,6 +83,21 @@ export default function Dashboard() {
         });
       } catch {
         setRevenueSummary({ totalRevenue: 0, totalOrders: 0 });
+      }
+
+      try {
+        const payrollParams = { month, year };
+        if (user?.role === ROLES.BRANCH_MANAGER) {
+          const branchId = getUserBranchId(user);
+          if (branchId) payrollParams.branchId = branchId;
+        }
+        const pSummary = await payrollService.getMonthlyPayrollSummary(payrollParams);
+        setPayrollSummary({
+          totalPayable: pSummary?.totalPayable ?? 0,
+          confirmedCount: pSummary?.confirmedCount ?? 0,
+        });
+      } catch {
+        setPayrollSummary({ totalPayable: 0, confirmedCount: 0 });
       }
     } catch (err) {
       setError(getApiMessage(err));
@@ -164,6 +181,20 @@ export default function Dashboard() {
           icon={ShoppingBag}
           color="blue"
           subtitle="Đơn hàng trong tháng"
+        />
+        <StatCard
+          label="Tổng thực trả tháng này"
+          value={formatCurrency(payrollSummary.totalPayable)}
+          icon={CircleDollarSign}
+          color="green"
+          subtitle={`Tháng ${month}/${year}`}
+        />
+        <StatCard
+          label="Bảng lương đã chốt"
+          value={formatNumber(payrollSummary.confirmedCount)}
+          icon={FileCheck}
+          color="brand"
+          subtitle="Đã chốt trong tháng"
         />
       </div>
     </div>

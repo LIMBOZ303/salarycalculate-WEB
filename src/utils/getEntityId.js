@@ -27,6 +27,10 @@ export const getUserId = (item) => {
 
 export const getEmployeeProfileId = (item) => {
   if (!item) return '';
+  if (typeof item === 'string') return item;
+  if (item.employee && typeof item.employee === 'object') {
+    return item.employee._id || item.employee.id || '';
+  }
   return item._id || item.id || '';
 };
 
