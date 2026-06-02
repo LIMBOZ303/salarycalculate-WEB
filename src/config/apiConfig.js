@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:5000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const TOKEN_KEY = 'auth_token';
 
@@ -12,6 +12,8 @@ export const ENDPOINTS = {
   shifts: '/api/shifts',
   attendance: '/api/attendance',
   revenues: '/api/revenues',
+  payrolls: '/api/payrolls',
+  payrollAdjustments: '/api/payroll-adjustments',
   admin: {
     users: '/api/admin/users',
     pendingEmployees: '/api/admin/employees/pending',
