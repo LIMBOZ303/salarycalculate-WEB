@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, Mail, Lock } from 'lucide-react';
+import { CreditCard, Mail, Lock, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { getApiMessage } from '../utils/parseApiData';
+import { getHomeRouteForRole, getPostLoginRoute } from '../utils/rolePermissions';
 
 export default function Login() {
-  const { login, isAuthenticated, loading: authLoading } = useAuth();
+  const { login, isAuthenticated, loading: authLoading, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -15,12 +16,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname;
 
   if (authLoading) return null;
 
-  if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+  if (isAuthenticated && user) {
+    return <Navigate to={getHomeRouteForRole(user.role)} replace />;
   }
 
   const handleSubmit = async (e) => {
@@ -28,8 +29,8 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate(from, { replace: true });
+      const userData = await login(email, password);
+      navigate(getPostLoginRoute(userData.role, from), { replace: true });
     } catch (err) {
       setError(getApiMessage(err));
     } finally {
@@ -45,7 +46,7 @@ export default function Login() {
             <CreditCard className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-800">Quản Lý Nhân Sự</h1>
-          <p className="text-sm text-slate-500 mt-1">Đăng nhập để truy cập dashboard</p>
+          <p className="text-sm text-slate-500 mt-1">Đăng nhập quản lý hoặc nhân viên</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-xl p-6 sm:p-8">
@@ -62,7 +63,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@company.com"
+                placeholder="email@company.com"
                 required
               />
               <Mail className="absolute right-3 top-[34px] w-4 h-4 text-slate-400 pointer-events-none" />
@@ -86,9 +87,10 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Tài khoản nhân viên vui lòng sử dụng app chấm công
-        </p>
+        <div className="flex items-center justify-center gap-2 text-xs text-slate-400 mt-6">
+          <Smartphone className="w-3.5 h-3.5" />
+          <p>Nhân viên iPhone: đăng nhập và thêm vào Màn hình chính</p>
+        </div>
       </div>
     </div>
   );

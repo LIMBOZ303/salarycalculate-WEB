@@ -1,0 +1,19 @@
+{
+  "name": "Nhân Viên TT",
+  "short_name": "TT Staff",
+  "description": "Ứng dụng chấm công và xem lương cho nhân viên",
+  "start_url": "/employee/home",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "orientation": "portrait",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

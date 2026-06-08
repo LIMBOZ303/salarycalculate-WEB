@@ -1,7 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
+import DashboardGuard from './DashboardGuard';
+import EmployeeGuard from './EmployeeGuard';
 import DashboardLayout from '../layouts/DashboardLayout';
+import EmployeeMobileLayout from '../layouts/EmployeeMobileLayout';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
 import PendingEmployees from '../pages/PendingEmployees';
@@ -13,6 +16,11 @@ import Attendance from '../pages/Attendance';
 import Revenues from '../pages/Revenues';
 import Payrolls from '../pages/Payrolls';
 import Users from '../pages/Users';
+import EmployeeHome from '../pages/employee/EmployeeHome';
+import EmployeeAttendance from '../pages/employee/EmployeeAttendance';
+import EmployeeHistory from '../pages/employee/EmployeeHistory';
+import EmployeePayroll from '../pages/employee/EmployeePayroll';
+import EmployeeProfile from '../pages/employee/EmployeeProfile';
 import Forbidden from '../pages/Forbidden';
 import NotFound from '../pages/NotFound';
 import { ROLES } from '../utils/rolePermissions';
@@ -26,9 +34,29 @@ export default function AppRoutes() {
       <Route path="/403" element={<Forbidden />} />
 
       <Route
+        path="/employee"
         element={
           <ProtectedRoute>
-            <DashboardLayout />
+            <EmployeeGuard>
+              <EmployeeMobileLayout />
+            </EmployeeGuard>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/employee/home" replace />} />
+        <Route path="home" element={<EmployeeHome />} />
+        <Route path="attendance" element={<EmployeeAttendance />} />
+        <Route path="history" element={<EmployeeHistory />} />
+        <Route path="payroll" element={<EmployeePayroll />} />
+        <Route path="profile" element={<EmployeeProfile />} />
+      </Route>
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <DashboardGuard>
+              <DashboardLayout />
+            </DashboardGuard>
           </ProtectedRoute>
         }
       >

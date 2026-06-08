@@ -27,6 +27,32 @@ export function canAccessDashboard(role) {
   return [ROLES.ADMIN, ROLES.OWNER, ROLES.BRANCH_MANAGER].includes(role);
 }
 
+export function canAccessEmployeeApp(role) {
+  return role === ROLES.EMPLOYEE;
+}
+
+export function getHomeRouteForRole(role) {
+  if (canAccessEmployeeApp(role)) return '/employee/home';
+  if (canAccessDashboard(role)) return '/dashboard';
+  return '/login';
+}
+
+export function getPostLoginRoute(role, fromPath) {
+  const home = getHomeRouteForRole(role);
+
+  if (canAccessEmployeeApp(role)) {
+    if (fromPath?.startsWith('/employee')) return fromPath;
+    return home;
+  }
+
+  if (canAccessDashboard(role)) {
+    if (fromPath && fromPath !== '/login' && !fromPath.startsWith('/employee')) return fromPath;
+    return home;
+  }
+
+  return home;
+}
+
 export function canWrite(role) {
   return role === ROLES.ADMIN;
 }

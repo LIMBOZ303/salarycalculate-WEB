@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import { setAuthHandlers } from '../services/axiosClient';
-import { canAccessDashboard } from '../utils/rolePermissions';
+import { canAccessDashboard, ROLES } from '../utils/rolePermissions';
 
 const AuthContext = createContext(null);
 
@@ -57,9 +57,9 @@ export function AuthProvider({ children }) {
     const userData = data?.user ?? data;
     const role = userData?.role;
 
-    if (role === 'employee') {
-      authService.logout();
-      throw new Error('Tài khoản nhân viên vui lòng sử dụng app chấm công.');
+    if (role === ROLES.EMPLOYEE) {
+      setUser(userData);
+      return userData;
     }
 
     if (!canAccessDashboard(role)) {
