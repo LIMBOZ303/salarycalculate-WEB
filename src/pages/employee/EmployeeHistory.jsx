@@ -1,25 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Calendar, LogIn, LogOut, Clock } from 'lucide-react';
-import Card from '../../components/Card';
 import Select from '../../components/Select';
 import Loading from '../../components/Loading';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
-import Badge, { getStatusBadgeVariant } from '../../components/Badge';
+import {
+  EmployeeCard,
+  EmployeeStat,
+  EmployeeStatusBadge,
+  EmployeeEmpty,
+  EmployeeError,
+  MONTH_OPTIONS,
+  YEAR_OPTIONS,
+} from '../../components/employee/EmployeeUI';
 import attendanceService from '../../services/attendanceService';
-import { formatDate, formatTime, getCurrentMonthYear } from '../../utils/formatDate';
+import { formatDate, formatClockTime, getCurrentMonthYear } from '../../utils/formatDate';
 import { formatNumber } from '../../utils/formatCurrency';
 import { getApiMessage } from '../../utils/parseApiData';
-
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Tháng ${i + 1}`,
-}));
-
-const YEARS = Array.from({ length: 5 }, (_, i) => {
-  const y = new Date().getFullYear() - 2 + i;
-  return { value: String(y), label: String(y) };
-});
 
 const STATUS_LABELS = {
   on_time: 'Đúng giờ',
@@ -30,7 +24,14 @@ const STATUS_LABELS = {
 };
 
 function getStatusLabel(status) {
-  return STATUS_LABELS[status] || status || '—';
+  return STATUS_LABELS[status] || status || '--';
+}
+
+function getStatusVariant(status) {
+  if (status === 'on_time') return 'success';
+  if (status === 'late' || status === 'early_leave') return 'warning';
+  if (status === 'absent') return 'danger';
+  return 'default';
 }
 
 export default function EmployeeHistory() {
@@ -65,54 +66,48 @@ export default function EmployeeHistory() {
   }, [month, year]);
 
   const totalHours = summary?.totalHours ?? summary?.workHours ?? summary?.totalWorkedHours ?? 0;
-  const workDays = summary?.workDays ?? summary?.totalDays ?? history.length;
+  const workDays = summary?.workDays ?? summary?.totalDays ?? summary?.presentDays ?? history.length;
+  const lateDays =
+    summary?.lateDays ??
+    summary?.lateCount ??
+    summary?.totalLate ??
+    history.filter((row) => row.status === 'late').length;
 
   return (
     <div className="space-y-4">
-      <Card>
+      <EmployeeCard>
         <div className="grid grid-cols-2 gap-3">
           <Select
             label="Tháng"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            options={MONTHS}
+            options={MONTH_OPTIONS}
             placeholder={false}
           />
           <Select
             label="Năm"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            options={YEARS}
+            options={YEAR_OPTIONS}
             placeholder={false}
           />
         </div>
-      </Card>
+      </EmployeeCard>
 
       {loading ? (
         <Loading message="Đang tải lịch sử..." />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchData} />
+        <EmployeeError message={error} onRetry={fetchData} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-slate-400 mb-1">
-                <Clock className="w-4 h-4" />
-                <span className="text-xs font-semibold">Tổng giờ</span>
-              </div>
-              <p className="text-xl font-bold text-slate-800">{formatNumber(totalHours)}h</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-slate-400 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span className="text-xs font-semibold">Ngày công</span>
-              </div>
-              <p className="text-xl font-bold text-slate-800">{formatNumber(workDays)}</p>
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <EmployeeStat label="Tổng giờ" value={`${formatNumber(totalHours)}h`} />
+            <EmployeeStat label="Ngày làm" value={formatNumber(workDays)} />
+            <EmployeeStat label="Đi trễ" value={formatNumber(lateDays)} />
           </div>
 
           {history.length === 0 ? (
-            <EmptyState
+            <EmployeeEmpty
               title="Chưa có dữ liệu"
               description={`Không có lịch sử chấm công tháng ${month}/${year}.`}
             />
@@ -122,42 +117,38 @@ export default function EmployeeHistory() {
                 const id = row.id || row._id || `${row.date}-${index}`;
                 const hours = row.totalHours ?? row.workedHours ?? row.hours ?? 0;
                 return (
-                  <div
-                    key={id}
-                    className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-bold text-slate-800">
+                  <EmployeeCard key={id}>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <p className="text-sm font-semibold text-[#0F172A]">
                         {formatDate(row.date || row.workDate || row.checkInTime)}
-                      </span>
+                      </p>
                       {row.status && (
-                        <Badge variant={getStatusBadgeVariant(row.status)}>
+                        <EmployeeStatusBadge variant={getStatusVariant(row.status)}>
                           {getStatusLabel(row.status)}
-                        </Badge>
+                        </EmployeeStatusBadge>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-slate-50 rounded-xl py-2 px-1">
-                        <LogIn className="w-3.5 h-3.5 text-emerald-500 mx-auto mb-0.5" />
-                        <p className="text-[10px] text-slate-400">Vào</p>
-                        <p className="text-xs font-bold text-slate-700">
-                          {formatTime(row.checkInTime)}
+                      <div>
+                        <p className="text-[10px] text-[#64748B]">Vào</p>
+                        <p className="text-sm font-semibold text-[#0F172A] tabular-nums mt-0.5">
+                          {formatClockTime(row.checkInTime)}
                         </p>
                       </div>
-                      <div className="bg-slate-50 rounded-xl py-2 px-1">
-                        <LogOut className="w-3.5 h-3.5 text-brand-500 mx-auto mb-0.5" />
-                        <p className="text-[10px] text-slate-400">Ra</p>
-                        <p className="text-xs font-bold text-slate-700">
-                          {formatTime(row.checkOutTime)}
+                      <div>
+                        <p className="text-[10px] text-[#64748B]">Ra</p>
+                        <p className="text-sm font-semibold text-[#0F172A] tabular-nums mt-0.5">
+                          {formatClockTime(row.checkOutTime)}
                         </p>
                       </div>
-                      <div className="bg-slate-50 rounded-xl py-2 px-1">
-                        <Clock className="w-3.5 h-3.5 text-amber-500 mx-auto mb-0.5" />
-                        <p className="text-[10px] text-slate-400">Giờ</p>
-                        <p className="text-xs font-bold text-slate-700">{formatNumber(hours)}h</p>
+                      <div>
+                        <p className="text-[10px] text-[#64748B]">Giờ</p>
+                        <p className="text-sm font-semibold text-[#0F172A] tabular-nums mt-0.5">
+                          {formatNumber(hours)}h
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  </EmployeeCard>
                 );
               })}
             </div>

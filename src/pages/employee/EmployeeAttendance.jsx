@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MapPin, LogIn, LogOut, AlertCircle, Navigation } from 'lucide-react';
-import Card from '../../components/Card';
+import { LogIn, LogOut, MapPin, RefreshCw } from 'lucide-react';
+import {
+  EmployeeCard,
+  EmployeeSectionTitle,
+  EmployeeStatusBadge,
+} from '../../components/employee/EmployeeUI';
 import Button from '../../components/Button';
 import attendanceService from '../../services/attendanceService';
+import employeeService from '../../services/employeeService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { formatLiveClock } from '../../utils/formatDate';
+import { getEmployeeBranchName } from '../../utils/employeeDisplay';
 import { getApiMessage } from '../../utils/parseApiData';
 
 const GPS_OPTIONS = {
@@ -13,16 +21,31 @@ const GPS_OPTIONS = {
 };
 
 export default function EmployeeAttendance() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const [now, setNow] = useState(() => new Date());
+  const [branchName, setBranchName] = useState('--');
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState('');
   const [locating, setLocating] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    employeeService
+      .getMe()
+      .then((profile) => setBranchName(getEmployeeBranchName(profile, user)))
+      .catch(() => setBranchName(getEmployeeBranchName(null, user)));
+  }, [user]);
+
   const fetchLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError('Trình duyệt không hỗ trợ định vị GPS.');
+      setLocationError('unsupported');
       return;
     }
 
@@ -43,9 +66,9 @@ export default function EmployeeAttendance() {
         if (error.code === error.PERMISSION_DENIED) {
           setLocationError('permission_denied');
         } else if (error.code === error.POSITION_UNAVAILABLE) {
-          setLocationError('Không thể xác định vị trí. Vui lòng thử lại.');
+          setLocationError('unavailable');
         } else {
-          setLocationError('Hết thời gian chờ GPS. Vui lòng thử lại.');
+          setLocationError('timeout');
         }
       },
       GPS_OPTIONS
@@ -68,10 +91,8 @@ export default function EmployeeAttendance() {
   const handleCheckIn = async () => {
     setCheckingIn(true);
     try {
-      const payload = buildPayload();
-      await attendanceService.checkIn(payload);
+      await attendanceService.checkIn(buildPayload());
       showToast('Chấm vào thành công!');
-      fetchLocation();
     } catch (err) {
       showToast(getApiMessage(err), 'error');
     } finally {
@@ -82,10 +103,8 @@ export default function EmployeeAttendance() {
   const handleCheckOut = async () => {
     setCheckingOut(true);
     try {
-      const payload = buildPayload();
-      await attendanceService.checkOut(payload);
+      await attendanceService.checkOut(buildPayload());
       showToast('Chấm ra thành công!');
-      fetchLocation();
     } catch (err) {
       showToast(getApiMessage(err), 'error');
     } finally {
@@ -93,91 +112,96 @@ export default function EmployeeAttendance() {
     }
   };
 
+  const gpsReady = Boolean(location) && !locating;
+  const gpsLabel = locationError === 'permission_denied'
+    ? 'Chưa cấp quyền'
+    : locationError
+      ? 'Không xác định được'
+      : locating
+        ? 'Đang lấy vị trí...'
+        : 'Sẵn sàng';
+
+  const gpsVariant = gpsReady ? 'success' : locationError ? 'warning' : 'default';
+
   return (
     <div className="space-y-4">
-      <Card title="Vị trí GPS" subtitle="Cần bật GPS để chấm công chính xác">
+      <div className="text-center py-2">
+        <p className="text-xs text-[#64748B]">Giờ hiện tại</p>
+        <p className="text-4xl font-semibold text-[#0F172A] tabular-nums tracking-tight mt-1">
+          {formatLiveClock(now)}
+        </p>
+      </div>
+
+      <EmployeeCard>
+        <EmployeeSectionTitle
+          action={<EmployeeStatusBadge variant={gpsVariant}>{gpsLabel}</EmployeeStatusBadge>}
+        >
+          Trạng thái GPS
+        </EmployeeSectionTitle>
+
         {locationError === 'permission_denied' ? (
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-            <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800 space-y-2">
-                <p className="font-semibold">Chưa có quyền truy cập vị trí</p>
-                <p className="text-xs text-amber-700">
-                  Trên iPhone, mở <strong>Cài đặt</strong> → <strong>Safari</strong> →{' '}
-                  <strong>Vị trí</strong> → chọn <strong>Cho phép</strong>, sau đó tải lại trang.
-                </p>
-                <p className="text-xs text-amber-600">
-                  Lưu ý: GPS chỉ hoạt động tốt trên HTTPS.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : locationError ? (
-          <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 text-sm text-rose-700">
-            {locationError}
+          <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-3 text-sm text-[#92400E] space-y-2">
+            <p className="font-medium">Cần bật quyền vị trí</p>
+            <p className="text-xs leading-relaxed">
+              Trên iPhone: Cài đặt → Safari → Vị trí → Cho phép. Sau đó tải lại trang.
+              GPS hoạt động tốt nhất trên HTTPS.
+            </p>
           </div>
         ) : location ? (
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 bg-brand-50 rounded-xl p-4">
-              <MapPin className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold text-slate-800">Đã xác định vị trí</p>
-                <p className="text-xs text-slate-500 mt-1 font-mono">
-                  {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-                </p>
-                {location.accuracy != null && (
-                  <p className="text-xs text-brand-600 mt-1 font-medium">
-                    Độ chính xác: ±{Math.round(location.accuracy)}m
-                  </p>
-                )}
-              </div>
+          <div className="flex items-start gap-2 text-sm text-[#64748B]">
+            <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-[#2563EB]" />
+            <div>
+              <p className="font-mono text-xs text-[#0F172A]">
+                {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+              </p>
+              {location.accuracy != null && (
+                <p className="text-xs mt-1">Độ chính xác ±{Math.round(location.accuracy)}m</p>
+              )}
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
-            <Navigation className="w-4 h-4 animate-pulse" />
-            Đang lấy vị trí GPS...
-          </div>
+          <p className="text-sm text-[#64748B]">Đang xác định vị trí...</p>
         )}
 
-        <Button
-          variant="secondary"
-          className="w-full mt-4"
+        <button
+          type="button"
           onClick={fetchLocation}
-          loading={locating}
+          disabled={locating}
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#2563EB] disabled:opacity-50"
         >
-          <Navigation className="w-4 h-4" />
+          <RefreshCw className={`w-3.5 h-3.5 ${locating ? 'animate-spin' : ''}`} />
           Cập nhật vị trí
-        </Button>
-      </Card>
+        </button>
+      </EmployeeCard>
+
+      <EmployeeCard>
+        <EmployeeSectionTitle>Chi nhánh</EmployeeSectionTitle>
+        <p className="text-sm font-medium text-[#0F172A]">{branchName}</p>
+      </EmployeeCard>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="success"
-          size="lg"
-          className="flex-col h-auto py-5 gap-2"
+        <button
+          type="button"
           onClick={handleCheckIn}
-          loading={checkingIn}
-          disabled={!location || locating}
+          disabled={!gpsReady || checkingIn}
+          className="rounded-2xl bg-[#16A34A] text-white py-5 px-3 flex flex-col items-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-transform"
         >
           <LogIn className="w-6 h-6" />
-          Chấm vào
-        </Button>
-        <Button
-          variant="primary"
-          size="lg"
-          className="flex-col h-auto py-5 gap-2"
+          <span className="text-sm font-semibold">{checkingIn ? 'Đang xử lý...' : 'Chấm vào'}</span>
+        </button>
+        <button
+          type="button"
           onClick={handleCheckOut}
-          loading={checkingOut}
-          disabled={!location || locating}
+          disabled={!gpsReady || checkingOut}
+          className="rounded-2xl bg-[#2563EB] text-white py-5 px-3 flex flex-col items-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-transform"
         >
           <LogOut className="w-6 h-6" />
-          Chấm ra
-        </Button>
+          <span className="text-sm font-semibold">{checkingOut ? 'Đang xử lý...' : 'Chấm ra'}</span>
+        </button>
       </div>
 
-      <p className="text-center text-xs text-slate-400 px-4">
-        Đảm bảo bạn đang ở đúng chi nhánh khi chấm công
+      <p className="text-center text-xs text-[#94A3B8] px-2">
+        Vui lòng chấm công tại đúng chi nhánh làm việc
       </p>
     </div>
   );

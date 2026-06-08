@@ -55,3 +55,7 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+.employee-shell {
+  -webkit-tap-highlight-color: transparent;
+}

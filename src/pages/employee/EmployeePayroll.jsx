@@ -1,43 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Wallet, Clock, PiggyBank, Gift, MinusCircle, Calendar } from 'lucide-react';
-import Card from '../../components/Card';
 import Select from '../../components/Select';
 import Loading from '../../components/Loading';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
-import Badge, { getPayrollStatusBadgeVariant, getPayrollStatusLabel } from '../../components/Badge';
+import {
+  EmployeeCard,
+  EmployeeRow,
+  EmployeeStatusBadge,
+  EmployeeEmpty,
+  EmployeeError,
+  MONTH_OPTIONS,
+  YEAR_OPTIONS,
+} from '../../components/employee/EmployeeUI';
+import { getPayrollStatusLabel } from '../../components/Badge';
 import payrollService from '../../services/payrollService';
 import { formatDate, getCurrentMonthYear } from '../../utils/formatDate';
 import { formatCurrency, formatNumber } from '../../utils/formatCurrency';
-import { getPayable } from '../../utils/payrollDisplay';
+import {
+  parseEmployeePayrollResponse,
+  getEmployeePayableAmount,
+  getEmployeeHeldAmount,
+  getEmployeeDeductions,
+} from '../../utils/employeeDisplay';
 import { getApiMessage } from '../../utils/parseApiData';
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Tháng ${i + 1}`,
-}));
-
-const YEARS = Array.from({ length: 5 }, (_, i) => {
-  const y = new Date().getFullYear() - 2 + i;
-  return { value: String(y), label: String(y) };
-});
-
-function PayrollRow({ icon: Icon, label, value, highlight, danger }) {
-  return (
-    <div className={`flex items-center justify-between py-3 ${highlight ? '' : 'border-b border-slate-50'}`}>
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        {Icon && <Icon className="w-4 h-4" />}
-        {label}
-      </div>
-      <span
-        className={`text-sm font-bold tabular-nums ${
-          highlight ? 'text-brand-600 text-base' : danger ? 'text-rose-600' : 'text-slate-800'
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
+function getPayrollStatusVariant(status) {
+  if (status === 'paid') return 'success';
+  if (status === 'confirmed') return 'info';
+  return 'default';
 }
 
 export default function EmployeePayroll() {
@@ -52,11 +40,11 @@ export default function EmployeePayroll() {
     setLoading(true);
     setError('');
     try {
-      const data = await payrollService.getMyPayroll({
+      const response = await payrollService.getMyPayroll({
         month: Number(month),
         year: Number(year),
       });
-      setPayroll(data);
+      setPayroll(parseEmployeePayrollResponse(response));
     } catch (err) {
       if (err?.response?.status === 404) {
         setPayroll(null);
@@ -72,95 +60,72 @@ export default function EmployeePayroll() {
     fetchData();
   }, [month, year]);
 
-  const payable = getPayable(payroll);
-  const heldAmount =
-    (payroll?.heldThisMonth ?? payroll?.holdThisMonth ?? 0) +
-    (payroll?.heldFromPrevious ?? payroll?.holdFromPrevious ?? 0);
-  const deductions = payroll?.totalDeductions ?? payroll?.deductions ?? 0;
-  const bonus = payroll?.bonus ?? payroll?.totalBonus ?? 0;
+  const payable = getEmployeePayableAmount(payroll);
+  const heldAmount = getEmployeeHeldAmount(payroll);
+  const deductions = getEmployeeDeductions(payroll);
+  const bonus = payroll?.totalBonus ?? payroll?.bonus ?? 0;
 
   return (
     <div className="space-y-4">
-      <Card>
+      <EmployeeCard>
         <div className="grid grid-cols-2 gap-3">
           <Select
             label="Tháng"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            options={MONTHS}
+            options={MONTH_OPTIONS}
             placeholder={false}
           />
           <Select
             label="Năm"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            options={YEARS}
+            options={YEAR_OPTIONS}
             placeholder={false}
           />
         </div>
-      </Card>
+      </EmployeeCard>
 
       {loading ? (
         <Loading message="Đang tải bảng lương..." />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchData} />
+        <EmployeeError message={error} onRetry={fetchData} />
       ) : !payroll ? (
-        <EmptyState
+        <EmployeeEmpty
           title="Chưa có bảng lương"
-          description={`Bảng lương tháng ${month}/${year} chưa được tạo hoặc chưa công bố.`}
+          description={`Tháng ${month}/${year} chưa có dữ liệu lương.`}
         />
       ) : (
         <>
-          <div className="bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-brand-100 text-sm">Thực trả</span>
-              <Badge variant={getPayrollStatusBadgeVariant(payroll.status)} className="!bg-white/20 !text-white">
+          <EmployeeCard className="bg-[#F8FAFC]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-[#64748B]">Thực trả</p>
+                <p className="text-4xl font-semibold text-[#0F172A] tabular-nums tracking-tight mt-1">
+                  {formatCurrency(payable)}
+                </p>
+                <p className="text-xs text-[#64748B] mt-2">
+                  Ngày trả dự kiến:{' '}
+                  {formatDate(payroll.expectedPayDate ?? payroll.scheduledPayDate)}
+                </p>
+              </div>
+              <EmployeeStatusBadge variant={getPayrollStatusVariant(payroll.status)}>
                 {getPayrollStatusLabel(payroll.status)}
-              </Badge>
+              </EmployeeStatusBadge>
             </div>
-            <p className="text-3xl font-bold">{formatCurrency(payable)}</p>
-            <p className="text-brand-100 text-xs mt-1">Tháng {month}/{year}</p>
-          </div>
+          </EmployeeCard>
 
-          <Card title="Chi tiết lương">
-            <PayrollRow
-              icon={Clock}
+          <EmployeeCard padding={false} className="px-4 py-1">
+            <EmployeeRow
               label="Tổng giờ"
               value={`${formatNumber(payroll.totalHours ?? payroll.workHours ?? 0)} giờ`}
             />
-            <PayrollRow
-              icon={Wallet}
-              label="Lương cơ bản"
-              value={formatCurrency(payroll.baseSalary ?? 0)}
-            />
-            <PayrollRow
-              icon={PiggyBank}
-              label="Giữ lại"
-              value={formatCurrency(heldAmount)}
-            />
-            <PayrollRow
-              icon={Gift}
-              label="Thưởng"
-              value={formatCurrency(bonus)}
-            />
-            <PayrollRow
-              icon={MinusCircle}
-              label="Phạt/khấu trừ"
-              value={formatCurrency(deductions)}
-              danger
-            />
-            <PayrollRow
-              icon={Calendar}
-              label="Ngày trả dự kiến"
-              value={formatDate(payroll.expectedPayDate ?? payroll.scheduledPayDate)}
-            />
-            <PayrollRow
-              icon={Wallet}
-              label="Thực trả"
-              value={formatCurrency(payable)}
-              highlight
-            />
-          </Card>
+            <EmployeeRow label="Lương cơ bản" value={formatCurrency(payroll.baseSalary ?? 0)} />
+            <EmployeeRow label="Giữ lại" value={formatCurrency(heldAmount)} />
+            <EmployeeRow label="Thưởng" value={formatCurrency(bonus)} />
+            <EmployeeRow label="Phạt/khấu trừ" value={formatCurrency(deductions)} danger />
+            <EmployeeRow label="Thực trả" value={formatCurrency(payable)} highlight />
+          </EmployeeCard>
         </>
       )}
     </div>

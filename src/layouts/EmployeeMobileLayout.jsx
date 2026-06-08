@@ -25,51 +25,47 @@ export default function EmployeeMobileLayout() {
   const title = pageTitles[location.pathname] || 'Nhân viên';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-100 pt-safe">
-        <div className="px-4 py-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
-            TT
+    <div className="min-h-[100dvh] bg-[#F8FAFC] flex flex-col overflow-x-hidden employee-shell">
+      <div className="mx-auto w-full max-w-md flex flex-col min-h-[100dvh]">
+        <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] pt-safe">
+          <div className="px-4 h-14 flex items-center justify-between">
+            <div className="min-w-0">
+              <h1 className="text-[15px] font-semibold text-[#0F172A] truncate">{title}</h1>
+              <p className="text-xs text-[#64748B] truncate">{getUserDisplayName(user)}</p>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-[#2563EB] text-white flex items-center justify-center text-xs font-semibold shrink-0">
+              TT
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold text-slate-800 truncate">{title}</h1>
-            <p className="text-xs text-slate-400 truncate">{getUserDisplayName(user)}</p>
+        </header>
+
+        <main className="flex-1 px-4 py-4 pb-24">
+          <Outlet />
+        </main>
+
+        <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-[#E2E8F0] pb-safe">
+          <div className="mx-auto max-w-md flex items-stretch">
+            {navItems.map(({ path, label, icon: Icon }) => (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) =>
+                  `flex flex-col items-center justify-center gap-0.5 py-2 min-w-0 flex-1 transition-colors ${
+                    isActive ? 'text-[#2563EB]' : 'text-[#94A3B8]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.25 : 1.75} />
+                    <span className="text-[10px] font-medium leading-none">{label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
           </div>
-        </div>
-      </header>
-
-      <main className="flex-1 px-4 py-4 pb-24 animate-fade-in">
-        <Outlet />
-      </main>
-
-      <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-100 pb-safe">
-        <div className="flex items-stretch justify-around px-1">
-          {navItems.map(({ path, label, icon: Icon }) => (
-            <NavLink
-              key={path}
-              to={path}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-0.5 py-2 px-2 min-w-0 flex-1 transition-colors ${
-                  isActive ? 'text-brand-600' : 'text-slate-400'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <div
-                    className={`p-1.5 rounded-xl transition-colors ${
-                      isActive ? 'bg-brand-50' : ''
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-                  </div>
-                  <span className="text-[10px] font-semibold leading-tight text-center">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </div>
-      </nav>
+        </nav>
+      </div>
     </div>
   );
 }

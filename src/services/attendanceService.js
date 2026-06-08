@@ -32,6 +32,11 @@ export const attendanceService = {
     return response.data;
   },
 
+  getMyToday: async () => {
+    const response = await axiosClient.get(ENDPOINTS.attendanceMe.today);
+    return response.data;
+  },
+
   checkIn: async (payload) => {
     const response = await axiosClient.post(ENDPOINTS.attendanceMe.checkIn, payload);
     return extractObject(response.data, ['attendance', 'data']) || response.data?.data || response.data;

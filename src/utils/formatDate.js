@@ -32,6 +32,24 @@ export function formatTime(dateStr) {
   });
 }
 
+export function formatClockTime(dateStr) {
+  if (!dateStr) return '--:--';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '--:--';
+  return date.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatLiveClock(date = new Date()) {
+  return date.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export function toInputDate(dateStr) {
   if (!dateStr) return '';
   const date = new Date(dateStr);

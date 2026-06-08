@@ -73,7 +73,7 @@ export const payrollService = {
 
   getMyPayroll: async (params) => {
     const response = await axiosClient.get(`${ENDPOINTS.payrolls}/me`, { params });
-    return extractObject(response.data, ['payroll', 'data']) || response.data?.data || response.data;
+    return response.data;
   },
 };
 

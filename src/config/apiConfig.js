@@ -14,6 +14,7 @@ export const ENDPOINTS = {
   attendanceMe: {
     checkIn: '/api/attendance/check-in',
     checkOut: '/api/attendance/check-out',
+    today: '/api/attendance/me/today',
     history: '/api/attendance/me/history',
     summary: '/api/attendance/me/summary',
   },

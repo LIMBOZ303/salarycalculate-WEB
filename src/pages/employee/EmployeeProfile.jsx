@@ -1,29 +1,28 @@
 import { useEffect, useState } from 'react';
-import { LogOut, User, Building2, Briefcase, BadgeDollarSign, Hash } from 'lucide-react';
-import Card from '../../components/Card';
-import Button from '../../components/Button';
+import { LogOut } from 'lucide-react';
 import Loading from '../../components/Loading';
-import ErrorState from '../../components/ErrorState';
-import Badge, { getStatusBadgeVariant } from '../../components/Badge';
+import {
+  EmployeeCard,
+  EmployeeRow,
+  EmployeeStatusBadge,
+  EmployeeError,
+} from '../../components/employee/EmployeeUI';
 import employeeService from '../../services/employeeService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserDisplayName, STATUS_LABELS } from '../../utils/rolePermissions';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { getApiMessage } from '../../utils/parseApiData';
 import { getEmployeeCode, getPosition } from '../../utils/payrollDisplay';
+import {
+  getEmployeeBranchName,
+  getEmployeeBranchAddress,
+} from '../../utils/employeeDisplay';
 
-function ProfileRow({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0">
-      <div className="p-2 bg-brand-50 rounded-xl text-brand-600 shrink-0">
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="text-sm font-semibold text-slate-800 truncate">{value}</p>
-      </div>
-    </div>
-  );
+function getStatusVariant(status) {
+  if (status === 'active') return 'success';
+  if (status === 'pending') return 'warning';
+  if (status === 'locked' || status === 'rejected') return 'danger';
+  return 'default';
 }
 
 export default function EmployeeProfile() {
@@ -50,45 +49,55 @@ export default function EmployeeProfile() {
   }, []);
 
   if (loading) return <Loading message="Đang tải hồ sơ..." />;
-  if (error) return <ErrorState message={error} onRetry={fetchData} />;
+  if (error) return <EmployeeError message={error} onRetry={fetchData} />;
 
   const profile = employee || user?.employee || user;
-  const name = getUserDisplayName(user) || profile?.fullName || profile?.name || '—';
-  const branchName = profile?.branch?.name || employee?.branchName || '—';
+  const name = getUserDisplayName(user) || profile?.fullName || profile?.name || '--';
+  const branchName = getEmployeeBranchName(profile, user);
+  const branchAddress = getEmployeeBranchAddress(profile, user);
+  const rawPosition = getPosition(profile);
+  const position = rawPosition && rawPosition !== '-' ? rawPosition : null;
+  const email = user?.email || profile?.email || '--';
+  const phone = profile?.phone || profile?.user?.phone || user?.phone || '--';
+  const hourlyRate = profile?.hourlyRate ?? profile?.salaryPerHour ?? 0;
 
   return (
     <div className="space-y-4">
-      <Card>
+      <EmployeeCard>
         <div className="flex flex-col items-center text-center py-2">
-          <div className="w-20 h-20 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center text-3xl font-bold mb-3">
-            {name.charAt(0).toUpperCase()}
+          <div className="w-16 h-16 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center text-2xl font-semibold">
+            {name !== '--' ? name.charAt(0).toUpperCase() : '?'}
           </div>
-          <h2 className="text-lg font-bold text-slate-800">{name}</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{user?.email || profile?.email || '—'}</p>
+          <h2 className="text-lg font-semibold text-[#0F172A] mt-3">{name}</h2>
+          <p className="text-sm text-[#64748B] mt-0.5">
+            {position || 'Nhân viên'}
+            {branchName !== '--' ? ` · ${branchName}` : ''}
+          </p>
           {profile?.status && (
-            <Badge variant={getStatusBadgeVariant(profile.status)} className="mt-2">
+            <EmployeeStatusBadge variant={getStatusVariant(profile.status)} className="mt-2">
               {STATUS_LABELS[profile.status] || profile.status}
-            </Badge>
+            </EmployeeStatusBadge>
           )}
         </div>
-      </Card>
+      </EmployeeCard>
 
-      <Card title="Thông tin làm việc">
-        <ProfileRow icon={Hash} label="Mã nhân viên" value={getEmployeeCode(profile)} />
-        <ProfileRow icon={Building2} label="Chi nhánh" value={branchName} />
-        <ProfileRow icon={Briefcase} label="Chức vụ" value={getPosition(profile)} />
-        <ProfileRow
-          icon={BadgeDollarSign}
-          label="Lương/giờ"
-          value={formatCurrency(profile?.hourlyRate ?? profile?.salaryPerHour ?? 0)}
-        />
-        <ProfileRow icon={User} label="Email" value={user?.email || profile?.email || '—'} />
-      </Card>
+      <EmployeeCard padding={false} className="px-4 py-1">
+        <EmployeeRow label="Mã nhân viên" value={getEmployeeCode(profile)} />
+        <EmployeeRow label="Email" value={email} />
+        {phone !== '--' && <EmployeeRow label="SĐT" value={phone} />}
+        <EmployeeRow label="Chi nhánh" value={branchName} />
+        <EmployeeRow label="Địa chỉ chi nhánh" value={branchAddress} />
+        <EmployeeRow label="Lương/giờ" value={formatCurrency(hourlyRate)} />
+      </EmployeeCard>
 
-      <Button variant="danger" className="w-full" size="lg" onClick={logout}>
-        <LogOut className="w-5 h-5" />
+      <button
+        type="button"
+        onClick={logout}
+        className="w-full rounded-2xl border border-[#E2E8F0] bg-white py-3.5 text-sm font-medium text-[#DC2626] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+      >
+        <LogOut className="w-4 h-4" />
         Đăng xuất
-      </Button>
+      </button>
     </div>
   );
 }
