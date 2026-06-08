@@ -4,3 +4,11 @@ dist
 .env.local
 *.log
 .DS_Store
+
+# CodeGraph
+.mcp.json
+.claude/
+.cursor/
+.gemini/
+.kiro/
+.codegraph/

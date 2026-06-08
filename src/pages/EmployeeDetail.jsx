@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import Loading from '../components/Loading';
 import ErrorState from '../components/ErrorState';
 import Badge, { getStatusBadgeVariant } from '../components/Badge';
+import Avatar from '../components/Avatar';
 import employeeService from '../services/employeeService';
 import branchService from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
@@ -87,11 +88,14 @@ export default function EmployeeDetail() {
       </div>
 
       <Card title={name} subtitle="Thông tin chi tiết nhân viên">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center text-2xl font-bold">
-            {name.charAt(0).toUpperCase()}
-          </div>
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar 
+            src={employee.avatarUrl || employee.user?.avatarUrl} 
+            name={name} 
+            size="xl" 
+          />
           <div>
+            <div className="text-xl font-bold text-slate-800 mb-1">{name}</div>
             <Badge variant={getStatusBadgeVariant(employee.status)}>
               {STATUS_LABELS[employee.status] || employee.status}
             </Badge>

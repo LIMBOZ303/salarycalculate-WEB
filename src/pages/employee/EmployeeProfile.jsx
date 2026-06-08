@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { LogOut, Camera, Trash2 } from 'lucide-react';
 import Loading from '../../components/Loading';
 import {
   EmployeeCard,
@@ -8,7 +8,10 @@ import {
   EmployeeError,
 } from '../../components/employee/EmployeeUI';
 import employeeService from '../../services/employeeService';
+import avatarService from '../../services/avatarService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import Avatar from '../../components/Avatar';
 import { getUserDisplayName, STATUS_LABELS } from '../../utils/rolePermissions';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { getApiMessage } from '../../utils/parseApiData';
@@ -26,10 +29,13 @@ function getStatusVariant(status) {
 }
 
 export default function EmployeeProfile() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserAvatar } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [employee, setEmployee] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,6 +54,63 @@ export default function EmployeeProfile() {
     fetchData();
   }, []);
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Kích thước ảnh tối đa là 5MB', 'error');
+      return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showToast('Chỉ hỗ trợ định dạng JPG, PNG, WEBP', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const res = await avatarService.uploadMyAvatar(file);
+      const newAvatarUrl = res.data?.avatarUrl;
+      const updatedUser = res.data?.user;
+      
+      updateUserAvatar(newAvatarUrl, updatedUser);
+      
+      setEmployee(prev => {
+        if (!prev) return prev;
+        return { ...prev, avatarUrl: newAvatarUrl };
+      });
+      
+      showToast(res.message || 'Cập nhật ảnh đại diện thành công', 'success');
+    } catch (err) {
+      showToast(getApiMessage(err) || 'Lỗi khi tải ảnh lên', 'error');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa ảnh đại diện?')) return;
+    
+    setUploading(true);
+    try {
+      await avatarService.deleteMyAvatar();
+      
+      updateUserAvatar(null);
+      setEmployee(prev => {
+        if (!prev) return prev;
+        return { ...prev, avatarUrl: null };
+      });
+      
+      showToast('Đã xóa ảnh đại diện', 'success');
+    } catch (err) {
+      showToast(getApiMessage(err) || 'Lỗi khi xóa ảnh', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) return <Loading message="Đang tải hồ sơ..." />;
   if (error) return <EmployeeError message={error} onRetry={fetchData} />;
 
@@ -65,10 +128,45 @@ export default function EmployeeProfile() {
     <div className="space-y-4">
       <EmployeeCard>
         <div className="flex flex-col items-center text-center py-2">
-          <div className="w-16 h-16 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center text-2xl font-semibold">
-            {name !== '--' ? name.charAt(0).toUpperCase() : '?'}
+          <Avatar 
+            src={profile?.avatarUrl || profile?.user?.avatarUrl} 
+            name={name} 
+            size="2xl" 
+            className="mb-3"
+          />
+          
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              {uploading ? 'Đang tải...' : 'Đổi ảnh'}
+            </button>
+            {(profile?.avatarUrl || profile?.user?.avatarUrl) && (
+              <button
+                type="button"
+                onClick={handleDeleteAvatar}
+                disabled={uploading}
+                className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-medium flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Xóa ảnh
+              </button>
+            )}
           </div>
-          <h2 className="text-lg font-semibold text-[#0F172A] mt-3">{name}</h2>
+          
+          <input 
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleFileChange}
+          />
+
+          <h2 className="text-lg font-semibold text-[#0F172A]">{name}</h2>
           <p className="text-sm text-[#64748B] mt-0.5">
             {position || 'Nhân viên'}
             {branchName !== '--' ? ` · ${branchName}` : ''}

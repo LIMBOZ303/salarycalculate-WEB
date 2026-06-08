@@ -2,6 +2,7 @@ import { Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserDisplayName, ROLE_LABELS } from '../utils/rolePermissions';
 import Button from '../components/Button';
+import Avatar from '../components/Avatar';
 
 export default function Topbar({ title, subtitle, setSidebarOpen }) {
   const { user, logout } = useAuth();
@@ -25,9 +26,16 @@ export default function Topbar({ title, subtitle, setSidebarOpen }) {
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        <div className="hidden sm:block text-right">
-          <div className="text-sm font-semibold text-slate-800">{getUserDisplayName(user)}</div>
-          <div className="text-xs text-slate-400">{ROLE_LABELS[user?.role] || user?.role}</div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block text-right">
+            <div className="text-sm font-semibold text-slate-800">{getUserDisplayName(user)}</div>
+            <div className="text-xs text-slate-400">{ROLE_LABELS[user?.role] || user?.role}</div>
+          </div>
+          <Avatar 
+            src={user?.avatarUrl || user?.employee?.avatarUrl} 
+            name={getUserDisplayName(user)} 
+            size="md" 
+          />
         </div>
         <Button variant="ghost" size="sm" onClick={logout} title="Đăng xuất">
           <LogOut className="w-4 h-4" />

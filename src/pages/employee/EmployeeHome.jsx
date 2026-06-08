@@ -13,6 +13,7 @@ import attendanceService from '../../services/attendanceService';
 import payrollService from '../../services/payrollService';
 import employeeService from '../../services/employeeService';
 import { useAuth } from '../../contexts/AuthContext';
+import Avatar from '../../components/Avatar';
 import { getUserDisplayName } from '../../utils/rolePermissions';
 import { formatClockTime, getCurrentMonthYear } from '../../utils/formatDate';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -83,14 +84,21 @@ export default function EmployeeHome() {
         </EmployeeCard>
       )}
 
-      <div className="pt-1">
-        <p className="text-sm text-[#64748B]">Xin chào,</p>
-        <h2 className="text-2xl font-semibold text-[#0F172A] tracking-tight mt-0.5">{name}</h2>
-        <p className="text-sm text-[#64748B] mt-1">
-          {[position, branchName !== '--' ? branchName : null]
-            .filter(Boolean)
-            .join(' · ') || 'Nhân viên'}
-        </p>
+      <div className="pt-1 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-[#64748B]">Xin chào,</p>
+          <h2 className="text-2xl font-semibold text-[#0F172A] tracking-tight mt-0.5">{name}</h2>
+          <p className="text-sm text-[#64748B] mt-1">
+            {[position, branchName !== '--' ? branchName : null]
+              .filter(Boolean)
+              .join(' · ') || 'Nhân viên'}
+          </p>
+        </div>
+        <Avatar 
+          src={profile?.avatarUrl || profile?.user?.avatarUrl || user?.avatarUrl} 
+          name={name} 
+          size="lg" 
+        />
       </div>
 
       <EmployeeCard>

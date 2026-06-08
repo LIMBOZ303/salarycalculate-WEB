@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Home, Clock, History, Wallet, User } from 'lucide-react';
 import { getUserDisplayName } from '../utils/rolePermissions';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from '../components/Avatar';
 
 const navItems = [
   { path: '/employee/home', label: 'Trang chủ', icon: Home },
@@ -33,9 +34,11 @@ export default function EmployeeMobileLayout() {
               <h1 className="text-[15px] font-semibold text-[#0F172A] truncate">{title}</h1>
               <p className="text-xs text-[#64748B] truncate">{getUserDisplayName(user)}</p>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-[#2563EB] text-white flex items-center justify-center text-xs font-semibold shrink-0">
-              TT
-            </div>
+            <Avatar 
+              src={user?.avatarUrl || user?.employee?.avatarUrl} 
+              name={getUserDisplayName(user)} 
+              size="md" 
+            />
           </div>
         </header>
 

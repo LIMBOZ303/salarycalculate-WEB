@@ -71,8 +71,18 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
+  const updateUserAvatar = useCallback((avatarUrl, updatedUserData = null) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      if (updatedUserData) {
+        return { ...prevUser, ...updatedUserData, avatarUrl };
+      }
+      return { ...prevUser, avatarUrl };
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, isAuthenticated: !!user, updateUserAvatar }}>
       {children}
     </AuthContext.Provider>
   );

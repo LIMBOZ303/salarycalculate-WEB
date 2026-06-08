@@ -12,6 +12,7 @@ import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Badge, { getStatusBadgeVariant } from '../components/Badge';
+import Avatar from '../components/Avatar';
 import employeeService from '../services/employeeService';
 import branchService from '../services/branchService';
 import adminService from '../services/adminService';
@@ -249,7 +250,20 @@ export default function Employees() {
   };
 
   const columns = [
-    { key: 'name', title: 'Họ tên', render: (row) => getName(row) },
+    { 
+      key: 'name', 
+      title: 'Họ tên', 
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <Avatar 
+            src={row.avatarUrl || row.user?.avatarUrl} 
+            name={getName(row)} 
+            size="md" 
+          />
+          <span className="font-medium text-slate-800">{getName(row)}</span>
+        </div>
+      ) 
+    },
     { key: 'email', title: 'Email', render: (row) => row.email || row.user?.email || '—' },
     { key: 'phone', title: 'SĐT', render: (row) => row.phone || row.user?.phone || '—' },
     { key: 'branch', title: 'Chi nhánh', render: (row) => getBranchName(row) },

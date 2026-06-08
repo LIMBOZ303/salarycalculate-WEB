@@ -10,6 +10,7 @@ import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Badge, { getStatusBadgeVariant } from '../components/Badge';
+import Avatar from '../components/Avatar';
 import adminService from '../services/adminService';
 import branchService from '../services/branchService';
 import { useToast } from '../contexts/ToastContext';
@@ -189,7 +190,16 @@ export default function Users() {
   };
 
   const columns = [
-    { key: 'name', title: 'Tên', render: (row) => getName(row) },
+    { 
+      key: 'name', 
+      title: 'Tên', 
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <Avatar src={row.avatarUrl} name={getName(row)} size="md" />
+          <span className="font-medium text-slate-800">{getName(row)}</span>
+        </div>
+      ) 
+    },
     { key: 'email', title: 'Email', render: (row) => row.email || '—' },
     { key: 'phone', title: 'SĐT', render: (row) => row.phone || '—' },
     {
